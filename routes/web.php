@@ -1,96 +1,65 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Models\Product;
-use Illuminate\Http\Request;
+use App\Http\Controllers\AccountController;
+use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\ChatbotController;
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\StoreController;
+use Illuminate\Support\Facades\Route;
 
+Route::get('/', [StoreController::class, 'home'])->name('home');
+Route::get('/shop', [StoreController::class, 'shop'])->name('shop');
+Route::get('/products/{product}', [StoreController::class, 'show'])->name('products.show');
 
+Route::view('/about', 'frontend.pages.about')->name('about');
+Route::view('/contact', 'frontend.pages.contact')->name('contact');
+Route::view('/warranty', 'frontend.pages.warranty')->name('warranty');
 
+Route::post('/chatbot/message', [ChatbotController::class, 'reply'])->name('chatbot.reply');
 
+Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+Route::post('/cart/items', [CartController::class, 'store'])->name('cart.store');
+Route::patch('/cart/items/{product}', [CartController::class, 'update'])->name('cart.update');
+Route::delete('/cart/items/{product}', [CartController::class, 'destroy'])->name('cart.destroy');
+Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
 
-Route::get('/', function () {
-    return view('pages.home');
-})->name('home');
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+    Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
+    Route::post('/register', [AuthController::class, 'register'])->name('register.post');
+});
 
-Route::get('/about', function () {
-    return view('pages.about');
-})->name('about');
+Route::middleware('auth')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('/account', [AccountController::class, 'edit'])->name('account.edit');
+    Route::put('/account', [AccountController::class, 'update'])->name('account.update');
+});
 
-Route::get('/shop', function () {
-    $products = Product::all();
-    return view('pages.shop', compact('products'));
-})->name('shop');
+Route::middleware(['auth', 'role:customer'])->group(function () {
+    Route::get('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');
+    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+});
 
-Route::get('/contact', function () {
-    return view('pages.contact');
-})->name('contact');
-
-Route::get('/product-detail/{id}', function ($id) {
-    $product = Product::findOrFail($id);
-    return view('pages.product-detail', compact('product'));
-})->name('product.detail');
-
-Route::post('/add-to-cart', function (Request $request) {
-    $cart = session()->get('cart', []);
-
-    $id = $request->id;
-
-    if (isset($cart[$id])) {
-        $cart[$id]['quantity']++;
-    } else {
-        $cart[$id] = [
-            'name' => $request->name,
-            'price' => $request->price,
-            'image' => $request->image,
-            'quantity' => 1,
-        ];
-    }
-
-    session()->put('cart', $cart);
-
-    return redirect()->route('cart')->with('success', 'Đã thêm sản phẩm vào giỏ hàng');
-})->name('cart.add');
-
-Route::get('/cart', function () {
-    return view('pages.cart');
-})->name('cart');
-
-Route::post('/cart/update', function (Request $request) {
-    $cart = session()->get('cart', []);
-
-    if (isset($cart[$request->id])) {
-        $cart[$request->id]['quantity'] = max(1, $request->quantity);
-        session()->put('cart', $cart);
-    }
-
-    return redirect()->route('cart');
-})->name('cart.update');
-
-Route::post('/cart/remove', function (Request $request) {
-    $cart = session()->get('cart', []);
-
-    if (isset($cart[$request->id])) {
-        unset($cart[$request->id]);
-        session()->put('cart', $cart);
-    }
-
-    return redirect()->route('cart');
-})->name('cart.remove');
-
-Route::post('/cart/clear', function () {
-    session()->forget('cart');
-
-    return redirect()->route('cart');
-})->name('cart.clear');
-
-
-Route::post('/login', [AuthController::class, 'login'])->name('login.post');
-
-Route::post('/register', [AuthController::class, 'register'])->name('register.post');
-
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-
-Route::get('/warranty', function () {
-    return view('warranty');
-})->name('warranty');
+Route::prefix('admin')
+    ->name('admin.')
+    ->middleware(['auth', 'role:admin'])
+    ->group(function () {
+        Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/reports', [DashboardController::class, 'reports'])->name('reports');
+        Route::resource('products', AdminProductController::class)->except('show');
+        Route::get('/customers', [AdminCustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/{customer}', [AdminCustomerController::class, 'show'])->name('customers.show');
+        Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+        Route::patch('/orders/{order}/payment/confirm', [AdminOrderController::class, 'confirmPayment'])->name('orders.payment.confirm');
+        Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
+    });

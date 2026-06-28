@@ -2,72 +2,110 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
 use App\Models\Product;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class CartController extends Controller
 {
     public function index()
     {
-        if (!Auth::check()) {
-            return redirect('/')->with('error', 'Vui lòng đăng nhập!');
-        }
-        return view('pages/cart');
+        return view('frontend.cart.index', [
+            'cart' => session('cart', []),
+        ]);
     }
 
-    public function add($id)
+    public function store(Request $request)
     {
-        $product = Product::findOrFail($id);
+        $validated = $request->validate([
+            'product_id' => ['required', 'integer', 'exists:products,id'],
+            'quantity' => ['required', 'integer', 'min:1'],
+        ]);
 
-        $cart = session()->get('capages/cartrt', []);
+        $product = Product::active()->findOrFail($validated['product_id']);
 
-        if (isset($cart[$id])) {
-            $cart[$id]['quantity']++;
-        } else {
-            $cart[$id] = [
-                'name' => $product->name,
-                'price' => $product->price,
-                'image' => $product->image,
-                'quantity' => 1,
-            ];
+        if ($product->stock < 1) {
+            throw ValidationException::withMessages([
+                'cart' => 'Sản phẩm hiện đã hết hàng.',
+            ]);
         }
 
-        session()->put('pages/cart', $cart);
+        $cart = session('cart', []);
+        $currentQuantity = $cart[$product->id]['quantity'] ?? 0;
+        $newQuantity = $currentQuantity + $validated['quantity'];
 
-        return redirect()->back()->with('success', 'Đã thêm sản phẩm vào giỏ hàng!');
+        if ($newQuantity > $product->stock) {
+            throw ValidationException::withMessages([
+                'cart' => 'Số lượng vượt quá tồn kho hiện tại của sản phẩm.',
+            ]);
+        }
+
+        $cart[$product->id] = [
+            'id' => $product->id,
+            'sku' => $product->sku,
+            'name' => $product->name,
+            'price' => (float) $product->price,
+            'image' => $product->image,
+            'stock' => $product->stock,
+            'quantity' => $newQuantity,
+        ];
+
+        session()->put('cart', $cart);
+
+        return redirect()
+            ->route('cart.index')
+            ->with('success', 'Đã thêm sản phẩm vào giỏ hàng.');
     }
 
-    public function update(Request $request)
+    public function update(Request $request, Product $product)
     {
-        $cart = session()->get('capages/cartrt', []);
-        $id = $request->id;
+        $validated = $request->validate([
+            'quantity' => ['required', 'integer', 'min:1'],
+        ]);
 
-        if (isset($cart[$id])) {
-            $cart[$id]['quantity'] = max(1, (int) $request->quantity);
-            session()->put('pages/cart', $cart);
+        $cart = session('cart', []);
+
+        if (! isset($cart[$product->id])) {
+            return redirect()
+                ->route('cart.index')
+                ->with('warning', 'Sản phẩm không còn trong giỏ hàng.');
         }
 
-        return redirect()->back()->with('success', 'Đã cập nhật giỏ hàng!');
+        if (! $product->is_active || $validated['quantity'] > $product->stock) {
+            throw ValidationException::withMessages([
+                'cart' => 'Không thể cập nhật số lượng do tồn kho không đủ hoặc sản phẩm đã ngừng bán.',
+            ]);
+        }
+
+        $cart[$product->id]['quantity'] = $validated['quantity'];
+        $cart[$product->id]['stock'] = $product->stock;
+        session()->put('cart', $cart);
+
+        return redirect()
+            ->route('cart.index')
+            ->with('success', 'Giỏ hàng đã được cập nhật.');
     }
 
-    public function remove(Request $request)
+    public function destroy(Product $product)
     {
-        $cart = session()->get('pages/cart', []);
-        $id = $request->id;
+        $cart = session('cart', []);
 
-        if (isset($cart[$id])) {
-            unset($cart[$id]);
-            session()->put('pages/cart', $cart);
+        if (isset($cart[$product->id])) {
+            unset($cart[$product->id]);
+            session()->put('cart', $cart);
         }
 
-        return redirect()->back()->with('success', 'Đã xóa sản phẩm khỏi giỏ hàng!');
+        return redirect()
+            ->route('cart.index')
+            ->with('success', 'Đã xóa sản phẩm khỏi giỏ hàng.');
     }
 
     public function clear()
     {
         session()->forget('cart');
 
-        return redirect()->back()->with('success', 'Đã xóa toàn bộ giỏ hàng!');
+        return redirect()
+            ->route('cart.index')
+            ->with('success', 'Đã xóa toàn bộ giỏ hàng.');
     }
 }
