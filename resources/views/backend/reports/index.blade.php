@@ -114,7 +114,7 @@
                         @forelse ($bestSellingProducts as $row)
                             <div class="list-group-item p-3 d-flex align-items-center admin-feature-row">
                                 <div class="me-3">
-                                    <img src="{{ asset($row['image'] ?: 'assets/img/shop_01.jpg') }}" alt="{{ $row['name'] }}"
+                                    <img src="{{ asset($row['image'] ?: 'assets/img/logo.png') }}" alt="{{ $row['name'] }}"
                                         class="rounded" style="width: 48px; height: 48px; object-fit: cover;">
                                 </div>
                                 <div class="flex-grow-1 min-w-0">

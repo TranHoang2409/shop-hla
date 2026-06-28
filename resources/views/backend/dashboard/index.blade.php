@@ -236,7 +236,7 @@
 
                 <ul class="list-group list-group-flush">
                     @forelse ($topSellingProducts as $product)
-                        @php($productImage = $product->image ?: 'assets/img/shop_01.jpg')
+                        @php($productImage = $product->image ?: 'assets/img/logo.png')
                         <li class="list-group-item d-flex align-items-center gap-3">
                             <img src="{{ asset($productImage) }}" class="rounded"
                                 style="width: 48px; height: 48px; object-fit: cover;" alt="{{ $product->product_name }}">
@@ -269,7 +269,7 @@
                 <ul class="list-group list-group-flush">
                     @forelse ($lowStockProducts as $product)
                         <li class="list-group-item d-flex align-items-center gap-3">
-                            <img src="{{ asset($product->image ?: 'assets/img/shop_01.jpg') }}" class="rounded"
+                            <img src="{{ asset($product->image ?: 'assets/img/logo.png') }}" class="rounded"
                                 style="width: 48px; height: 48px; object-fit: cover;" alt="{{ $product->name }}">
                             <div class="flex-grow-1">
                                 <p class="mb-1">{{ $product->name }}</p>
@@ -298,7 +298,7 @@
 
                 <ul class="list-group list-group-flush">
                     @forelse ($recentOrders as $order)
-                        @php($orderThumb = optional(optional($order->items->first())->product)->image ?: 'assets/img/shop_02.jpg')
+                        @php($orderThumb = optional(optional($order->items->first())->product)->image ?: 'assets/img/logo.png')
                         <li class="list-group-item d-flex align-items-center gap-3">
                             <img src="{{ asset($orderThumb) }}" class="rounded"
                                 style="width: 48px; height: 48px; object-fit: cover;" alt="{{ $order->order_number }}">

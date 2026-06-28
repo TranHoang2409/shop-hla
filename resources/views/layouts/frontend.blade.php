@@ -9,7 +9,6 @@
 
     @yield('extra_css')
 
-    <link rel="apple-touch-icon" href="{{ asset('assets/img/apple-icon.png') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ asset('assets/img/favicon.ico') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/fontawesome.min.css') }}">
